@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use axum::{
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, patch, post},
+    routing::{get, post},
     Extension, Router,
 };
 use dotenv::dotenv;
@@ -13,6 +13,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod app;
 mod auth;
+mod devices;
 mod users;
 
 #[tokio::main]
@@ -44,6 +45,7 @@ async fn main() {
         // auth
         .route("/auth/register", post(auth::controller::register))
         .route("/auth/login", post(auth::controller::login))
+        .route("/auth/refresh", post(auth::controller::refresh))
         // users
         .route("/users/:id", get(users::controller::get_user_by_id))
         // layers

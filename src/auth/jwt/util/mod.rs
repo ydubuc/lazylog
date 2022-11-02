@@ -9,14 +9,20 @@ use jsonwebtoken::{
 
 use crate::auth::jwt::models::claims::Claims;
 
-pub fn sign_jwt(id: String) -> String {
+use super::config::JWT_EXP;
+
+pub fn sign_jwt(uid: &str) -> String {
     let iat = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    let exp = iat + 900;
+    let exp = iat + JWT_EXP;
 
-    let claims = Claims { id, iat, exp };
+    let claims = Claims {
+        id: uid.to_string(),
+        iat,
+        exp,
+    };
     let secret = env::var("JWT_SECRET").expect("secret");
     let jwt = encode(
         &Header::default(),

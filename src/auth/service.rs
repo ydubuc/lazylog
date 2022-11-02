@@ -1,17 +1,10 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::{
-    app::{
-        self,
-        errors::DefaultApiError,
-        models::api_error::ApiError,
-        util::{argon2::hash_password, sqlx::get_code_from_db_err},
-    },
-    users::{self, models::user::User},
+    app::{self, models::api_error::ApiError},
+    devices::{self, dtos::refresh_device_dto::RefreshDeviceDto},
+    users,
 };
 
 use super::{
@@ -21,90 +14,64 @@ use super::{
 };
 
 pub async fn register(dto: &RegisterDto, pool: &PgPool) -> Result<AccessInfo, ApiError> {
-    let user = User {
-        id: Uuid::new_v4().to_string(),
-        username: dto.username.to_string(),
-        username_key: dto.username.to_lowercase(),
-        email: dto.email.to_string(),
-        email_key: dto.email.to_lowercase(),
-        password_hash: hash_password(&dto.password),
-        updated_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        created_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
-
-    let sqlx_result = sqlx::query(
-        "
-        INSERT INTO users (
-            id, username, username_key, email, email_key, password_hash, updated_at, created_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ",
-    )
-    .bind(&user.id)
-    .bind(&user.username)
-    .bind(&user.username_key)
-    .bind(&user.email)
-    .bind(&user.email_key)
-    .bind(&user.password_hash)
-    .bind(user.updated_at.to_owned() as i64)
-    .bind(user.created_at.to_owned() as i64)
-    .execute(pool)
-    .await;
-
-    match sqlx_result {
+    match users::service::create_user(dto, pool).await {
         Ok(_) => {
             let login_dto = LoginDto {
                 username: None,
-                email: Some(user.email),
+                email: Some(dto.email.to_string()),
                 password: dto.password.to_string(),
             };
 
             return login(&login_dto, &pool).await;
         }
-        Err(e) => match e.as_database_error() {
-            Some(db_err) => match get_code_from_db_err(db_err) {
-                Some(code) => match code.as_str() {
-                    "23505" => {
-                        return Err(ApiError {
-                            status: StatusCode::CONFLICT,
-                            message: "User already exists.".to_string(),
-                        })
-                    }
-                    _ => return Err(DefaultApiError::InternalServerError.value()),
-                },
-                None => return Err(DefaultApiError::InternalServerError.value()),
-            },
-            None => return Err(DefaultApiError::InternalServerError.value()),
-        },
+        Err(e) => Err(e),
     }
 }
 
 pub async fn login(dto: &LoginDto, pool: &PgPool) -> Result<AccessInfo, ApiError> {
-    let user_result = users::service::get_user_by_login_dto(dto, pool).await;
-
-    match user_result {
+    match users::service::get_user_by_login_dto(dto, pool).await {
         Ok(user) => {
             let matches = app::util::argon2::matches(&user.password_hash, &dto.password);
             if !matches {
                 return Err(ApiError {
                     status: StatusCode::UNAUTHORIZED,
-                    message: "Invalid username or password.".to_string(),
+                    message: "Invalid password.".to_string(),
                 });
             }
 
-            let access_token = sign_jwt(user.id);
-            let access_info = AccessInfo { access_token };
+            match devices::service::create_device(&user, pool).await {
+                Ok(device) => {
+                    let access_info = AccessInfo {
+                        access_token: sign_jwt(&user.id),
+                        refresh_token: Some(device.refresh_token),
+                    };
 
-            return Ok(access_info);
+                    return Ok(access_info);
+                }
+                Err(e) => Err(e),
+            }
         }
         Err(e) => {
             return Err(e);
+        }
+    }
+}
+
+pub async fn refresh(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<AccessInfo, ApiError> {
+    let result = devices::service::refresh_device(dto, pool).await;
+
+    match result {
+        Ok(_) => {
+            return Ok(AccessInfo {
+                access_token: sign_jwt(&dto.user_id),
+                refresh_token: None,
+            })
+        }
+        Err(_) => {
+            return Err(ApiError {
+                status: StatusCode::NOT_FOUND,
+                message: "Failed to refresh".to_string(),
+            })
         }
     }
 }
