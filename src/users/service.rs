@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::{
     app::{
         errors::DefaultApiError,
-        models::api_error::ApiError,
-        util::{argon2::hash_password, sqlx::get_code_from_db_err},
+        models::{api_error::ApiError, sql_state_codes::SqlStateCodes},
+        util::{hasher, sqlx::get_code_from_db_err},
     },
     auth::dtos::{login_dto::LoginDto, register_dto::RegisterDto},
 };
@@ -18,13 +18,20 @@ use super::{
 };
 
 pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiError> {
+    let Ok(hash) = hasher::hash(dto.password.to_string()).await else {
+        return Err(ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            message: "Failed to hash password.".to_string()
+        })
+    };
+
     let user = User {
         id: Uuid::new_v4().to_string(),
         username: dto.username.to_string(),
         username_key: dto.username.to_lowercase(),
         email: dto.email.to_string(),
         email_key: dto.email.to_lowercase(),
-        password_hash: hash_password(&dto.password),
+        password_hash: hash,
         updated_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -54,44 +61,60 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
     .execute(pool)
     .await;
 
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
     match sqlx_result {
         Ok(_) => Ok(user),
-        Err(e) => match e.as_database_error() {
-            Some(db_err) => match get_code_from_db_err(db_err) {
-                Some(code) => match code.as_str() {
-                    "23505" => {
-                        return Err(ApiError {
-                            status: StatusCode::CONFLICT,
-                            message: "User already exists.".to_string(),
-                        })
-                    }
-                    _ => return Err(DefaultApiError::InternalServerError.value()),
-                },
-                None => return Err(DefaultApiError::InternalServerError.value()),
-            },
-            None => return Err(DefaultApiError::InternalServerError.value()),
-        },
+        Err(e) => {
+            let Some(db_err) = e.as_database_error() else {
+                return Err(DefaultApiError::InternalServerError.value());
+            };
+
+            let Some(code) = get_code_from_db_err(db_err) else {
+                return Err(DefaultApiError::InternalServerError.value());
+            };
+
+            match code.as_str() {
+                SqlStateCodes::UniqueViolation => {
+                    return Err(ApiError {
+                        status: StatusCode::CONFLICT,
+                        message: "User already exists.".to_string(),
+                    })
+                }
+                _ => return Err(DefaultApiError::InternalServerError.value()),
+            }
+        }
     }
 }
 
 pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<User>, ApiError> {
-    println!("{:?}", dto);
+    let Ok(sql) = dto.to_sql() else {
+        return Err(ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            message: "Failed to parse query".to_string()
+        });
+    };
 
-    match dto.to_sql() {
-        Ok(sql) => {
-            let sqlx = sqlx::query_as::<_, User>(&sql);
-            let sqlx_result = sqlx.fetch_all(pool).await;
+    let mut sqlx = sqlx::query_as::<_, User>(&sql);
 
-            if let Some(error) = sqlx_result.as_ref().err() {
-                println!("{}", error);
-            }
+    if let Some(id) = &dto.id {
+        sqlx = sqlx.bind(id);
+    }
+    if let Some(username) = &dto.username {
+        sqlx = sqlx.bind(["%", &username.to_lowercase(), "%"].concat());
+    }
 
-            match sqlx_result {
-                Ok(users) => return Ok(users),
-                Err(_) => return Err(DefaultApiError::InternalServerError.value()),
-            }
-        }
-        Err(e) => return Err(e),
+    let sqlx_result = sqlx.fetch_all(pool).await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
+    match sqlx_result {
+        Ok(users) => return Ok(users),
+        Err(_) => return Err(DefaultApiError::InternalServerError.value()),
     }
 }
 
@@ -135,7 +158,8 @@ pub async fn get_user_by_login_dto(login_dto: &LoginDto, pool: &PgPool) -> Resul
 pub async fn get_user_by_username(username: &str, pool: &PgPool) -> Result<User, ApiError> {
     let sqlx_result = sqlx::query_as::<_, User>(
         "
-        SELECT * FROM users WHERE username_key = $1
+        SELECT * FROM users
+        WHERE username_key = $1
         ",
     )
     .bind(username.to_lowercase())
@@ -158,7 +182,8 @@ pub async fn get_user_by_username(username: &str, pool: &PgPool) -> Result<User,
 pub async fn get_user_by_email(email: &str, pool: &PgPool) -> Result<User, ApiError> {
     let sqlx_result = sqlx::query_as::<_, User>(
         "
-        SELECT * FROM users WHERE email_key = $1
+        SELECT * FROM users
+        WHERE email_key = $1
         ",
     )
     .bind(email.to_lowercase())

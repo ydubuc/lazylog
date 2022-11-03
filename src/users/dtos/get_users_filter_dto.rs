@@ -1,10 +1,12 @@
 use axum::http::StatusCode;
 use serde::Deserialize;
+use validator::Validate;
 
 use crate::{app::models::api_error::ApiError, users::models::user::USER_SORTABLE_FIELDS};
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct GetUsersFilterDto {
+    #[validate(length(equal = 36))]
     pub id: Option<String>,
     pub username: Option<String>,
     pub sort: Option<String>,
@@ -21,12 +23,19 @@ impl GetUsersFilterDto {
         let mut sort_order = "DESC".to_string();
         let mut page_limit: u8 = 50;
 
-        if let Some(id) = &self.id {
-            clauses.push(["id = ", id].concat());
+        let mut index: u8 = 1;
+
+        // WHERE CLAUSES
+        if self.id.is_some() {
+            clauses.push(["id = $", &index.to_string()].concat());
+            index += 1;
         }
-        if let Some(username) = &self.username {
-            clauses.push(["username_key LIKE '%", &username.to_lowercase(), "%'"].concat())
+        if self.username.is_some() {
+            clauses.push(["username_key LIKE $", &index.to_string()].concat());
+            index += 1;
         }
+
+        // SORT
         if let Some(sort) = &self.sort {
             let sort_params: Vec<&str> = sort.split(",").collect();
 
@@ -62,6 +71,7 @@ impl GetUsersFilterDto {
             }
         }
 
+        // CLAUSES BUILDER
         let mut has_inserted_where = false;
 
         for clause in clauses {
@@ -75,8 +85,10 @@ impl GetUsersFilterDto {
             sql.push_str(&clause);
         }
 
+        // ORDER BY
         sql.push_str(&[" ORDER BY ", &sort_field, " ", &sort_order].concat());
 
+        // LIMIT
         if let Some(limit) = self.limit {
             page_limit = limit;
         }

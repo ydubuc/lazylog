@@ -3,21 +3,21 @@ use axum::http::StatusCode;
 use crate::app::models::api_error::ApiError;
 
 #[derive(Debug)]
-pub enum UsersApiError {
-    UserNotFound,
-    UsersNotFound,
+pub enum PostsApiError {
+    PostNotFound,
+    PostsNotFound,
 }
 
-impl UsersApiError {
+impl PostsApiError {
     pub fn value(&self) -> ApiError {
         match *self {
-            Self::UserNotFound => ApiError {
+            Self::PostNotFound => ApiError {
                 status: StatusCode::NOT_FOUND,
-                message: "User not found.".to_string(),
+                message: "Post not found.".to_string(),
             },
-            Self::UsersNotFound => ApiError {
+            Self::PostsNotFound => ApiError {
                 status: StatusCode::NOT_FOUND,
-                message: "Users not found".to_string(),
+                message: "Posts not found".to_string(),
             },
         }
     }

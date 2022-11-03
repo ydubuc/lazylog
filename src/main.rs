@@ -1,11 +1,6 @@
 use std::net::SocketAddr;
 
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Extension, Router,
-};
+use axum::{Extension, Router};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
@@ -14,6 +9,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod app;
 mod auth;
 mod devices;
+mod posts;
 mod users;
 
 #[tokio::main]
@@ -41,15 +37,11 @@ async fn main() {
 
     // app
     let app = Router::new()
-        .route("/", get(root))
-        // auth
-        .route("/auth/register", post(auth::controller::register))
-        .route("/auth/login", post(auth::controller::login))
-        .route("/auth/refresh", post(auth::controller::refresh))
-        // users
-        .route("/users", get(users::controller::get_users))
-        .route("/users/me", get(users::controller::get_user_from_request))
-        .route("/users/:id", get(users::controller::get_user_by_id))
+        // routers
+        .merge(app::router())
+        .merge(auth::router())
+        .merge(users::router())
+        .merge(posts::router())
         // layers
         .layer(cors)
         .layer(Extension(pool));
@@ -61,8 +53,4 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .expect("failed to start server");
-}
-
-async fn root() -> impl IntoResponse {
-    StatusCode::ACCEPTED
 }

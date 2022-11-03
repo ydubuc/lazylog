@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use sqlx::PgPool;
 
 use crate::{
-    app::{self, models::api_error::ApiError},
+    app::{self, errors::DefaultApiError, models::api_error::ApiError, util::hasher},
     devices::{self, dtos::refresh_device_dto::RefreshDeviceDto},
     users,
 };
@@ -31,7 +31,10 @@ pub async fn register(dto: &RegisterDto, pool: &PgPool) -> Result<AccessInfo, Ap
 pub async fn login(dto: &LoginDto, pool: &PgPool) -> Result<AccessInfo, ApiError> {
     match users::service::get_user_by_login_dto(dto, pool).await {
         Ok(user) => {
-            let matches = app::util::argon2::matches(&user.password_hash, &dto.password);
+            let Ok(matches) = hasher::verify(dto.password.to_string(), user.password_hash.to_string()).await else {
+                return Err(DefaultApiError::InternalServerError.value());
+            };
+
             if !matches {
                 return Err(ApiError {
                     status: StatusCode::UNAUTHORIZED,

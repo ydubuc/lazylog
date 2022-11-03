@@ -5,7 +5,11 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    app::{errors::DefaultApiError, models::api_error::ApiError, util::sqlx::get_code_from_db_err},
+    app::{
+        errors::DefaultApiError,
+        models::{api_error::ApiError, sql_state_codes::SqlStateCodes},
+        util::sqlx::get_code_from_db_err,
+    },
     users::models::user::User,
 };
 
@@ -49,21 +53,25 @@ pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiErro
 
     match sqlx_result {
         Ok(_) => Ok(device),
-        Err(e) => match e.as_database_error() {
-            Some(db_err) => match get_code_from_db_err(db_err) {
-                Some(code) => match code.as_str() {
-                    "23505" => {
-                        return Err(ApiError {
-                            status: StatusCode::CONFLICT,
-                            message: "Device already exists.".to_string(),
-                        })
-                    }
-                    _ => return Err(DefaultApiError::InternalServerError.value()),
-                },
-                None => return Err(DefaultApiError::InternalServerError.value()),
-            },
-            None => return Err(DefaultApiError::InternalServerError.value()),
-        },
+        Err(e) => {
+            let Some(db_err) = e.as_database_error() else {
+                return Err(DefaultApiError::InternalServerError.value());
+            };
+
+            let Some(code) = get_code_from_db_err(db_err) else {
+                return Err(DefaultApiError::InternalServerError.value());
+            };
+
+            match code.as_str() {
+                SqlStateCodes::UniqueViolation => {
+                    return Err(ApiError {
+                        status: StatusCode::CONFLICT,
+                        message: "Device already exists.".to_string(),
+                    })
+                }
+                _ => return Err(DefaultApiError::InternalServerError.value()),
+            }
+        }
     }
 }
 

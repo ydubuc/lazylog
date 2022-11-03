@@ -4,7 +4,7 @@ use std::{
 };
 
 use jsonwebtoken::{
-    decode, encode, errors::Error, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+    decode, encode, errors::ErrorKind, Algorithm, DecodingKey, EncodingKey, Header, Validation,
 };
 
 use crate::auth::jwt::models::claims::Claims;
@@ -34,7 +34,7 @@ pub fn sign_jwt(uid: &str) -> String {
     return jwt;
 }
 
-pub fn decode_jwt(jwt: String) -> Result<Claims, Error> {
+pub fn decode_jwt(jwt: String) -> Result<Claims, ErrorKind> {
     let secret = env::var("JWT_SECRET").expect("secret");
     let result = decode::<Claims>(
         &jwt,
@@ -44,6 +44,6 @@ pub fn decode_jwt(jwt: String) -> Result<Claims, Error> {
 
     match result {
         Ok(data) => return Ok(data.claims),
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.kind().to_owned()),
     }
 }

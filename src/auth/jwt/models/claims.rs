@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     TypedHeader,
 };
+use jsonwebtoken::errors::ErrorKind;
 use serde::{Deserialize, Serialize};
 
 use crate::{app::models::api_error::ApiError, auth::jwt::util::decode_jwt};
@@ -32,17 +33,22 @@ where
                     message: "Missing token.".to_string(),
                 })?;
 
-        let claims_result = decode_jwt(bearer_token.token().to_string());
-        match claims_result {
+        match decode_jwt(bearer_token.token().to_string()) {
             Ok(claims) => return Ok(claims),
-            Err(e) => {
-                println!("{}", e);
-
-                return Err(ApiError {
-                    status: StatusCode::UNAUTHORIZED,
-                    message: "Invalid token.".to_string(),
-                });
-            }
+            Err(e) => match e {
+                ErrorKind::ExpiredSignature => {
+                    return Err(ApiError {
+                        status: StatusCode::UNAUTHORIZED,
+                        message: "Token expired".to_string(),
+                    });
+                }
+                _ => {
+                    return Err(ApiError {
+                        status: StatusCode::UNAUTHORIZED,
+                        message: "Invalid token.".to_string(),
+                    });
+                }
+            },
         }
     }
 }

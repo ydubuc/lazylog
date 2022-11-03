@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE users(
     id VARCHAR(255) PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
     username_key VARCHAR(255) NOT NULL UNIQUE,
@@ -9,10 +9,19 @@ CREATE TABLE users (
     created_at BIGINT NOT NULL
 );
 
-CREATE TABLE devices (
+CREATE TABLE devices(
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
     refresh_token VARCHAR(255) NOT NULL UNIQUE,
+    updated_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL
+);
+
+CREATE TABLE posts(
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
     updated_at BIGINT NOT NULL,
     created_at BIGINT NOT NULL
 );
