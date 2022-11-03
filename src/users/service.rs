@@ -13,7 +13,9 @@ use crate::{
     auth::dtos::{login_dto::LoginDto, register_dto::RegisterDto},
 };
 
-use super::{errors::UsersApiError, models::user::User};
+use super::{
+    dtos::get_users_filter_dto::GetUsersFilterDto, errors::UsersApiError, models::user::User,
+};
 
 pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiError> {
     let user = User {
@@ -72,6 +74,27 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
     }
 }
 
+pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<User>, ApiError> {
+    println!("{:?}", dto);
+
+    match dto.to_sql() {
+        Ok(sql) => {
+            let sqlx = sqlx::query_as::<_, User>(&sql);
+            let sqlx_result = sqlx.fetch_all(pool).await;
+
+            if let Some(error) = sqlx_result.as_ref().err() {
+                println!("{}", error);
+            }
+
+            match sqlx_result {
+                Ok(users) => return Ok(users),
+                Err(_) => return Err(DefaultApiError::InternalServerError.value()),
+            }
+        }
+        Err(e) => return Err(e),
+    }
+}
+
 pub async fn get_user_by_id(id: &str, pool: &PgPool) -> Result<User, ApiError> {
     let sqlx_result = sqlx::query_as::<_, User>(
         "
@@ -81,6 +104,10 @@ pub async fn get_user_by_id(id: &str, pool: &PgPool) -> Result<User, ApiError> {
     .bind(id)
     .fetch_optional(pool)
     .await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
 
     match sqlx_result {
         Ok(user) => match user {
@@ -115,6 +142,10 @@ pub async fn get_user_by_username(username: &str, pool: &PgPool) -> Result<User,
     .fetch_optional(pool)
     .await;
 
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
     match sqlx_result {
         Ok(user) => match user {
             Some(user) => return Ok(user),
@@ -133,6 +164,10 @@ pub async fn get_user_by_email(email: &str, pool: &PgPool) -> Result<User, ApiEr
     .bind(email.to_lowercase())
     .fetch_optional(pool)
     .await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
 
     match sqlx_result {
         Ok(user) => match user {

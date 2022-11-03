@@ -44,6 +44,7 @@ pub async fn login(dto: &LoginDto, pool: &PgPool) -> Result<AccessInfo, ApiError
                     let access_info = AccessInfo {
                         access_token: sign_jwt(&user.id),
                         refresh_token: Some(device.refresh_token),
+                        device_id: Some(device.id),
                     };
 
                     return Ok(access_info);
@@ -65,6 +66,7 @@ pub async fn refresh(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<AccessInfo
             return Ok(AccessInfo {
                 access_token: sign_jwt(&dto.user_id),
                 refresh_token: None,
+                device_id: None,
             })
         }
         Err(_) => {

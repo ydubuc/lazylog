@@ -71,8 +71,7 @@ pub async fn refresh_device(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<(),
     let sqlx_result = sqlx::query(
         "
         UPDATE devices SET updated_at = $1
-        WHERE user_id = $2 AND WHERE refresh_token = $3
-        VALUES ($1, $2, $3)
+        WHERE id = $2 AND user_id = $3 AND refresh_token = $4
         ",
     )
     .bind(
@@ -81,6 +80,7 @@ pub async fn refresh_device(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<(),
             .unwrap()
             .as_secs() as i64,
     )
+    .bind(&dto.device_id)
     .bind(&dto.user_id)
     .bind(&dto.refresh_token)
     .execute(pool)

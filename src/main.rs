@@ -47,6 +47,8 @@ async fn main() {
         .route("/auth/login", post(auth::controller::login))
         .route("/auth/refresh", post(auth::controller::refresh))
         // users
+        .route("/users", get(users::controller::get_users))
+        .route("/users/me", get(users::controller::get_user_from_request))
         .route("/users/:id", get(users::controller::get_user_by_id))
         // layers
         .layer(cors)
