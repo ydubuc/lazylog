@@ -21,8 +21,18 @@ CREATE TABLE devices(
 CREATE TABLE posts(
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
+    title TEXT NOT NULL,
     content TEXT,
     updated_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL
+);
+
+CREATE TABLE media(
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    width SMALLINT NOT NULL,
+    height SMALLINT NOT NULL,
+    mime_type VARCHAR(255) NOT NULL,
     created_at BIGINT NOT NULL
 );

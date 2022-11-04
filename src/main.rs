@@ -12,6 +12,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod app;
 mod auth;
 mod devices;
+mod media;
 mod posts;
 mod users;
 
@@ -52,18 +53,25 @@ async fn main() {
     // app
     let app = Router::with_state(state)
         .route("/", get(app::controller::get_root))
+        // auth
         .route("/auth/register", post(auth::controller::register))
         .route("/auth/login", post(auth::controller::login))
         .route("/auth/refresh", post(auth::controller::refresh))
+        .route("/auth/logout", post(auth::controller::logout))
+        // users
         .route("/users", get(users::controller::get_users))
         .route("/users/me", get(users::controller::get_user_from_request))
         .route("/users/:id", get(users::controller::get_user_by_id))
         .route("/users/:id", patch(users::controller::edit_user_by_id))
+        .route("/users/:id", delete(users::controller::delete_user_by_id))
+        // posts
         .route("/posts", post(posts::controller::create_post))
         .route("/posts", get(posts::controller::get_posts))
         .route("/posts/:id", get(posts::controller::get_post_by_id))
         .route("/posts/:id", patch(posts::controller::edit_post_by_id))
         .route("/posts/:id", delete(posts::controller::delete_post_by_id))
+        // media
+        .route("/media", post(media::controller::create_media))
         .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

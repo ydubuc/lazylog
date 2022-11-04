@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::http::StatusCode;
 use serde::Deserialize;
 use validator::Validate;
@@ -43,6 +45,11 @@ impl EditUserDto {
             sql.push_str(&clause);
         }
 
+        let updated_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        sql.push_str(&[", updated_at = ", &updated_at.to_string()].concat());
         sql.push_str(&[" WHERE id = $", &index.to_string()].concat());
         sql.push_str(" RETURNING *");
 

@@ -3,7 +3,10 @@ use sqlx::PgPool;
 
 use crate::{
     app::{errors::DefaultApiError, models::api_error::ApiError, util::hasher},
-    devices::{self, dtos::refresh_device_dto::RefreshDeviceDto},
+    devices::{
+        self,
+        dtos::{logout_device_dto::LogoutDeviceDto, refresh_device_dto::RefreshDeviceDto},
+    },
     users,
 };
 
@@ -70,5 +73,12 @@ pub async fn refresh(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<AccessInfo
             code: StatusCode::NOT_FOUND,
             message: "Failed to refresh".to_string(),
         }),
+    }
+}
+
+pub async fn logout(dto: &LogoutDeviceDto, pool: &PgPool) -> Result<(), ApiError> {
+    match devices::service::logout_device(dto, pool).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }

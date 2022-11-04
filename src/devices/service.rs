@@ -12,7 +12,11 @@ use crate::{
     users::models::user::User,
 };
 
-use super::{dtos::refresh_device_dto::RefreshDeviceDto, models::device::Device};
+use super::{
+    dtos::{logout_device_dto::LogoutDeviceDto, refresh_device_dto::RefreshDeviceDto},
+    errors::DevicesApiError,
+    models::device::Device,
+};
 
 pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiError> {
     let device = Device::new(user);
@@ -89,6 +93,32 @@ pub async fn refresh_device(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<(),
                 code: StatusCode::NOT_FOUND,
                 message: "Failed to refresh.".to_string(),
             }),
+        },
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
+    }
+}
+
+pub async fn logout_device(dto: &LogoutDeviceDto, pool: &PgPool) -> Result<(), ApiError> {
+    let sqlx_result = sqlx::query(
+        "
+        DELETE FROM devices
+        WHERE id = $1 AND user_id = $2 AND refresh_token = $3
+        ",
+    )
+    .bind(&dto.device_id)
+    .bind(&dto.user_id)
+    .bind(&dto.refresh_token)
+    .execute(pool)
+    .await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
+    match sqlx_result {
+        Ok(result) => match result.rows_affected() > 0 {
+            true => Ok(()),
+            false => Err(DevicesApiError::DeviceNotFound.value()),
         },
         Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }

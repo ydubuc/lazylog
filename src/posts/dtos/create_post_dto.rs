@@ -5,8 +5,8 @@ use validator::Validate;
 pub struct CreatePostDto {
     #[validate(length(
         min = 1,
-        max = 255,
-        message = "title must be between 1 and 255 characters."
+        max = 512,
+        message = "title must be between 1 and 512 characters."
     ))]
     pub title: String,
     #[validate(length(

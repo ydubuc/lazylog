@@ -198,10 +198,7 @@ pub async fn edit_user_by_id(
     pool: &PgPool,
 ) -> Result<User, ApiError> {
     if claims.id != id {
-        return Err(ApiError {
-            code: StatusCode::UNAUTHORIZED,
-            message: "Permission denied.".to_string(),
-        });
+        return Err(UsersApiError::PermissionDenied.value());
     }
 
     let sql_result = dto.to_sql();
@@ -226,6 +223,33 @@ pub async fn edit_user_by_id(
         Ok(user) => match user {
             Some(user) => Ok(user),
             None => Err(UsersApiError::UserNotFound.value()),
+        },
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
+    }
+}
+
+pub async fn delete_user_by_id(claims: &Claims, id: &str, pool: &PgPool) -> Result<(), ApiError> {
+    if claims.id != id {
+        return Err(UsersApiError::PermissionDenied.value());
+    }
+
+    let sqlx_result = sqlx::query(
+        "
+        DELETE FROM users WHERE id = $1
+        ",
+    )
+    .bind(id)
+    .execute(pool)
+    .await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
+    match sqlx_result {
+        Ok(result) => match result.rows_affected() > 0 {
+            true => Ok(()),
+            false => Err(UsersApiError::UserNotFound.value()),
         },
         Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }

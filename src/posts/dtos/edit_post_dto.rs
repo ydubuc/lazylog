@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::http::StatusCode;
 use serde::Deserialize;
 use validator::Validate;
@@ -8,8 +10,8 @@ use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims}
 pub struct EditPostDto {
     #[validate(length(
         min = 1,
-        max = 255,
-        message = "title must be between 1 and 255 characters."
+        max = 512,
+        message = "title must be between 1 and 512 characters."
     ))]
     pub title: Option<String>,
     #[validate(length(
@@ -52,6 +54,12 @@ impl EditPostDto {
 
             sql.push_str(&clause);
         }
+
+        let updated_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        sql.push_str(&[", updated_at = ", &updated_at.to_string()].concat());
 
         sql.push_str(&[" WHERE id = $", &index.to_string()].concat());
         sql.push_str(&[" AND user_id = '", &claims.id, "'"].concat());

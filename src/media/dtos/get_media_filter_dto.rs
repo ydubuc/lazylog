@@ -2,27 +2,24 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::{app::models::api_error::ApiError, posts::models::post::POST_SORTABLE_FIELDS};
+use crate::{app::models::api_error::ApiError, media::models::media::MEDIA_SORTABLE_FIELDS};
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct GetPostsFilterDto {
+pub struct GetMediaFilterDto {
     #[validate(length(equal = 36, message = "id must be 36 characters."))]
     pub id: Option<String>,
-    #[validate(length(equal = 36, message = "user_id must be 36 characters."))]
+    #[validate(length(equal = 36, message = "id must be 36 characters."))]
     pub user_id: Option<String>,
-    #[validate(length(
-        min = 3,
-        max = 512,
-        message = "search must be between 3 and 512 characters."
-    ))]
-    pub search: Option<String>,
+    #[validate(url)]
+    pub url: Option<String>,
+    pub mime_type: Option<String>,
     pub sort: Option<String>,
     pub cursor: Option<String>,
-    #[validate(range(min = 1, max = 100, message = "limit must equal or less than 100."))]
+    #[validate(range(max = 100, message = "limit must be equal or less than 100."))]
     pub limit: Option<u8>,
 }
 
-impl GetPostsFilterDto {
+impl GetMediaFilterDto {
     pub fn to_sql(&self) -> Result<String, ApiError> {
         let mut sql = "SELECT * FROM posts".to_string();
         let mut clauses = Vec::new();
@@ -42,8 +39,12 @@ impl GetPostsFilterDto {
             clauses.push(["user_id = $", &index.to_string()].concat());
             index += 1;
         }
-        if self.search.is_some() {
-            clauses.push(["title LIKE $", &index.to_string()].concat());
+        if self.url.is_some() {
+            clauses.push(["url = $", &index.to_string()].concat());
+            index += 1;
+        }
+        if self.mime_type.is_some() {
+            clauses.push(["mime_type = $", &index.to_string()].concat());
             index += 1;
         }
 
@@ -57,7 +58,7 @@ impl GetPostsFilterDto {
                     message: "Malformed sort query.".to_string(),
                 });
             }
-            if !POST_SORTABLE_FIELDS.contains(&sort_params[0]) {
+            if !MEDIA_SORTABLE_FIELDS.contains(&sort_params[0]) {
                 return Err(ApiError {
                     code: StatusCode::BAD_REQUEST,
                     message: "Invalid sort field.".to_string(),
