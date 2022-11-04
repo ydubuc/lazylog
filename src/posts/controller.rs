@@ -77,3 +77,14 @@ pub async fn edit_post_by_id(
         Err(e) => Err(e),
     }
 }
+
+pub async fn delete_post_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
+) -> Result<(), ApiError> {
+    match Claims::from_header(authorization) {
+        Ok(claims) => return service::delete_post_by_id(&claims, &id, &state.pool).await,
+        Err(e) => Err(e),
+    }
+}

@@ -1,8 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::{
     app::{
@@ -160,6 +157,30 @@ pub async fn edit_post_by_id(
         Ok(post) => match post {
             Some(post) => Ok(post),
             None => Err(PostsApiError::PostNotFound.value()),
+        },
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
+    }
+}
+
+pub async fn delete_post_by_id(claims: &Claims, id: &str, pool: &PgPool) -> Result<(), ApiError> {
+    let sqlx_result = sqlx::query(
+        "
+        DELETE FROM posts WHERE id = $1 AND user_id = $2
+        ",
+    )
+    .bind(id)
+    .bind(&claims.id)
+    .execute(pool)
+    .await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
+    match sqlx_result {
+        Ok(result) => match result.rows_affected() > 0 {
+            true => Ok(()),
+            false => Err(PostsApiError::PostNotFound.value()),
         },
         Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }

@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use axum::{
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use dotenv::dotenv;
@@ -58,6 +58,7 @@ async fn main() {
         .route("/posts", get(posts::controller::get_posts))
         .route("/posts/:id", get(posts::controller::get_post_by_id))
         .route("/posts/:id", patch(posts::controller::edit_post_by_id))
+        .route("/posts/:id", delete(posts::controller::delete_post_by_id))
         .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
