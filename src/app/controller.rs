@@ -1,5 +1,9 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::extract::State;
 
-pub async fn get_root() -> impl IntoResponse {
-    StatusCode::ACCEPTED
+use crate::AppState;
+
+use super::models::api_error::ApiError;
+
+pub async fn get_root(State(_state): State<AppState>) -> Result<(), ApiError> {
+    Ok(())
 }

@@ -1,28 +1,28 @@
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
+    headers::{authorization::Bearer, Authorization},
     http::StatusCode,
-    Extension, Json,
+    Json, TypedHeader,
 };
-use sqlx::PgPool;
 use validator::Validate;
 
-use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims};
+use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims, AppState};
 
 use super::{dtos::get_users_filter_dto::GetUsersFilterDto, models::user::User, service};
 
 pub async fn get_users(
-    _claims: Claims,
-    query: Query<GetUsersFilterDto>,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<AppState>,
+    TypedHeader(_authorization): TypedHeader<Authorization<Bearer>>,
+    Query(dto): Query<GetUsersFilterDto>,
 ) -> Result<Json<Vec<User>>, ApiError> {
-    match query.0.validate() {
-        Ok(_) => match service::get_users(&query.0, &pool).await {
+    match dto.validate() {
+        Ok(_) => match service::get_users(&dto, &state.pool).await {
             Ok(users) => return Ok(Json(users)),
             Err(e) => return Err(e),
         },
         Err(e) => {
             return Err(ApiError {
-                status: StatusCode::BAD_REQUEST,
+                code: StatusCode::BAD_REQUEST,
                 message: e.to_string(),
             })
         }
@@ -30,25 +30,24 @@ pub async fn get_users(
 }
 
 pub async fn get_user_from_request(
-    claims: Claims,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<AppState>,
+    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<User>, ApiError> {
-    println!("{:?}", claims);
-
-    match service::get_user_by_id(&claims.id, &pool).await {
-        Ok(user) => return Ok(Json(user)),
-        Err(e) => return Err(e),
+    match Claims::from_header(authorization) {
+        Ok(claims) => match service::get_user_by_id(&claims.id, &state.pool).await {
+            Ok(user) => return Ok(Json(user)),
+            Err(e) => return Err(e),
+        },
+        Err(e) => Err(e),
     }
 }
 
 pub async fn get_user_by_id(
-    claims: Claims,
+    State(state): State<AppState>,
     Path(id): Path<String>,
-    Extension(pool): Extension<PgPool>,
+    TypedHeader(_authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<User>, ApiError> {
-    println!("{:?}", claims);
-
-    match service::get_user_by_id(&id, &pool).await {
+    match service::get_user_by_id(&id, &state.pool).await {
         Ok(user) => return Ok(Json(user)),
         Err(e) => return Err(e),
     }

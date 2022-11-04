@@ -11,7 +11,7 @@ impl DefaultApiError {
     pub fn value(&self) -> ApiError {
         match *self {
             Self::InternalServerError => ApiError {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: "An internal server error occurred.".to_string(),
             },
         }

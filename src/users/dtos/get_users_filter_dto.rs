@@ -6,11 +6,12 @@ use crate::{app::models::api_error::ApiError, users::models::user::USER_SORTABLE
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct GetUsersFilterDto {
-    #[validate(length(equal = 36))]
+    #[validate(length(equal = 36, message = "id must be 36 characters."))]
     pub id: Option<String>,
     pub username: Option<String>,
     pub sort: Option<String>,
     pub cursor: Option<String>,
+    #[validate(range(max = 100, message = "limit must less than 100."))]
     pub limit: Option<u8>,
 }
 
@@ -32,7 +33,7 @@ impl GetUsersFilterDto {
         }
         if self.username.is_some() {
             clauses.push(["username_key LIKE $", &index.to_string()].concat());
-            index += 1;
+            // index += 1;
         }
 
         // SORT
@@ -41,13 +42,13 @@ impl GetUsersFilterDto {
 
             if sort_params.len() != 2 {
                 return Err(ApiError {
-                    status: StatusCode::BAD_REQUEST,
+                    code: StatusCode::BAD_REQUEST,
                     message: "Malformed sort query.".to_string(),
                 });
             }
             if !USER_SORTABLE_FIELDS.contains(&sort_params[0]) {
                 return Err(ApiError {
-                    status: StatusCode::BAD_REQUEST,
+                    code: StatusCode::BAD_REQUEST,
                     message: "Invalid sort field.".to_string(),
                 });
             }
@@ -60,7 +61,7 @@ impl GetUsersFilterDto {
                 "DESC" => "<",
                 _ => {
                     return Err(ApiError {
-                        status: StatusCode::BAD_REQUEST,
+                        code: StatusCode::BAD_REQUEST,
                         message: "Malformed sort query.".to_string(),
                     })
                 }

@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::{
     app::{
         errors::DefaultApiError,
-        models::{api_error::ApiError, sql_state_codes::SqlStateCodes},
-        util::sqlx::get_code_from_db_err,
+        models::api_error::ApiError,
+        util::sqlx::{get_code_from_db_err, SqlStateCodes},
     },
     auth::jwt::models::claims::Claims,
 };
@@ -68,9 +68,9 @@ pub async fn create_post(
             };
 
             match code.as_str() {
-                SqlStateCodes::UniqueViolation => {
+                SqlStateCodes::UNIQUE_VIOLATION => {
                     return Err(ApiError {
-                        status: StatusCode::CONFLICT,
+                        code: StatusCode::CONFLICT,
                         message: "Post already exists.".to_string(),
                     })
                 }

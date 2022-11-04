@@ -1,9 +1,6 @@
 use axum::{
-    async_trait,
-    extract::{FromRequest, RequestParts},
     headers::{authorization::Bearer, Authorization},
     http::StatusCode,
-    TypedHeader,
 };
 use jsonwebtoken::errors::ErrorKind;
 use serde::{Deserialize, Serialize};
@@ -17,34 +14,20 @@ pub struct Claims {
     pub exp: u64,
 }
 
-#[async_trait]
-impl<B> FromRequest<B> for Claims
-where
-    B: Send,
-{
-    type Rejection = ApiError;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let TypedHeader(Authorization(bearer_token)) =
-            TypedHeader::<Authorization<Bearer>>::from_request(req)
-                .await
-                .map_err(|_| ApiError {
-                    status: StatusCode::UNAUTHORIZED,
-                    message: "Missing token.".to_string(),
-                })?;
-
-        match decode_jwt(bearer_token.token().to_string()) {
+impl Claims {
+    pub fn from_header(header: Authorization<Bearer>) -> Result<Self, ApiError> {
+        match decode_jwt(header.0.token().to_string()) {
             Ok(claims) => return Ok(claims),
             Err(e) => match e {
                 ErrorKind::ExpiredSignature => {
                     return Err(ApiError {
-                        status: StatusCode::UNAUTHORIZED,
+                        code: StatusCode::UNAUTHORIZED,
                         message: "Token expired".to_string(),
                     });
                 }
                 _ => {
                     return Err(ApiError {
-                        status: StatusCode::UNAUTHORIZED,
+                        code: StatusCode::UNAUTHORIZED,
                         message: "Invalid token.".to_string(),
                     });
                 }
@@ -52,3 +35,76 @@ where
         }
     }
 }
+
+// #[async_trait]
+// impl<S, B> FromRequest<S, B> for Claims
+// where
+//     B: Send + 'static,
+//     S: Send + Sync,
+// {
+//     type Rejection = ApiError;
+
+//     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+//         let TypedHeader(Authorization(bearer_token)) =
+//             TypedHeader::<Authorization<Bearer>>::from_request(req, state)
+//                 .await
+//                 .map_err(|_| ApiError {
+//                     code: StatusCode::UNAUTHORIZED,
+//                     message: "Missing token.".to_string(),
+//                 })?;
+
+//         match decode_jwt(bearer_token.token().to_string()) {
+//             Ok(claims) => return Ok(claims),
+//             Err(e) => match e {
+//                 ErrorKind::ExpiredSignature => {
+//                     return Err(ApiError {
+//                         code: StatusCode::UNAUTHORIZED,
+//                         message: "Token expired".to_string(),
+//                     });
+//                 }
+//                 _ => {
+//                     return Err(ApiError {
+//                         code: StatusCode::UNAUTHORIZED,
+//                         message: "Invalid token.".to_string(),
+//                     });
+//                 }
+//             },
+//         }
+//     }
+// }
+
+// #[async_trait]
+// impl<B> FromRequest<B> for Claims
+// where
+//     B: Send,
+// {
+//     type Rejection = ApiError;
+
+//     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+//         let TypedHeader(Authorization(bearer_token)) =
+//             TypedHeader::<Authorization<Bearer>>::from_request(req)
+//                 .await
+//                 .map_err(|_| ApiError {
+//                     code: StatusCode::UNAUTHORIZED,
+//                     message: "Missing token.".to_string(),
+//                 })?;
+
+//         match decode_jwt(bearer_token.token().to_string()) {
+//             Ok(claims) => return Ok(claims),
+//             Err(e) => match e {
+//                 ErrorKind::ExpiredSignature => {
+//                     return Err(ApiError {
+//                         code: StatusCode::UNAUTHORIZED,
+//                         message: "Token expired".to_string(),
+//                     });
+//                 }
+//                 _ => {
+//                     return Err(ApiError {
+//                         code: StatusCode::UNAUTHORIZED,
+//                         message: "Invalid token.".to_string(),
+//                     });
+//                 }
+//             },
+//         }
+//     }
+// }

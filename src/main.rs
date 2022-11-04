@@ -1,8 +1,10 @@
-use std::net::SocketAddr;
-
-use axum::{Extension, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use dotenv::dotenv;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, PgPool};
+use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -11,6 +13,11 @@ mod auth;
 mod devices;
 mod posts;
 mod users;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: PgPool,
+}
 
 #[tokio::main]
 async fn main() {
@@ -35,16 +42,19 @@ async fn main() {
         .await
         .expect("failed to connect to database");
 
+    let state = AppState { pool };
+
     // app
-    let app = Router::new()
-        // routers
-        .merge(app::router())
-        .merge(auth::router())
-        .merge(users::router())
-        .merge(posts::router())
-        // layers
-        .layer(cors)
-        .layer(Extension(pool));
+    let app = Router::with_state(state)
+        .route("/", get(app::controller::get_root))
+        .route("/auth/register", post(auth::controller::register))
+        .route("/auth/login", post(auth::controller::login))
+        .route("/auth/refresh", post(auth::controller::refresh))
+        .route("/users", get(users::controller::get_users))
+        .route("/users/me", get(users::controller::get_user_from_request))
+        .route("/users/:id", get(users::controller::get_user_by_id))
+        .route("/posts", post(posts::controller::create_post))
+        .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);

@@ -1,17 +1,17 @@
-use axum::{http::StatusCode, response::IntoResponse, Json};
-use serde_json::json;
+use axum::http::StatusCode;
+
+use super::api_error::ApiError;
 
 #[derive(Debug)]
 pub struct AppError {
     pub message: String,
 }
 
-impl IntoResponse for AppError {
-    fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "message": self.message })),
-        )
-            .into_response()
+impl AppError {
+    fn as_api_error(self) -> ApiError {
+        return ApiError {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: self.message,
+        };
     }
 }

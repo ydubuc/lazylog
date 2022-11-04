@@ -7,8 +7,11 @@ use uuid::Uuid;
 use crate::{
     app::{
         errors::DefaultApiError,
-        models::{api_error::ApiError, sql_state_codes::SqlStateCodes},
-        util::{hasher, sqlx::get_code_from_db_err},
+        models::api_error::ApiError,
+        util::{
+            hasher,
+            sqlx::{get_code_from_db_err, SqlStateCodes},
+        },
     },
     auth::dtos::{login_dto::LoginDto, register_dto::RegisterDto},
 };
@@ -20,7 +23,7 @@ use super::{
 pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiError> {
     let Ok(hash) = hasher::hash(dto.password.to_string()).await else {
         return Err(ApiError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: StatusCode::INTERNAL_SERVER_ERROR,
             message: "Failed to hash password.".to_string()
         })
     };
@@ -77,9 +80,9 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
             };
 
             match code.as_str() {
-                SqlStateCodes::UniqueViolation => {
+                SqlStateCodes::UNIQUE_VIOLATION => {
                     return Err(ApiError {
-                        status: StatusCode::CONFLICT,
+                        code: StatusCode::CONFLICT,
                         message: "User already exists.".to_string(),
                     })
                 }
@@ -92,7 +95,7 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
 pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<User>, ApiError> {
     let Ok(sql) = dto.to_sql() else {
         return Err(ApiError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: StatusCode::INTERNAL_SERVER_ERROR,
             message: "Failed to parse query".to_string()
         });
     };
@@ -150,7 +153,7 @@ pub async fn get_user_by_login_dto(login_dto: &LoginDto, pool: &PgPool) -> Resul
     }
 
     return Err(ApiError {
-        status: StatusCode::BAD_REQUEST,
+        code: StatusCode::BAD_REQUEST,
         message: "Missing credentials.".to_string(),
     });
 }

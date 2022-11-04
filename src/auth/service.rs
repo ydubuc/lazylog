@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use sqlx::PgPool;
 
 use crate::{
-    app::{self, errors::DefaultApiError, models::api_error::ApiError, util::hasher},
+    app::{errors::DefaultApiError, models::api_error::ApiError, util::hasher},
     devices::{self, dtos::refresh_device_dto::RefreshDeviceDto},
     users,
 };
@@ -37,7 +37,7 @@ pub async fn login(dto: &LoginDto, pool: &PgPool) -> Result<AccessInfo, ApiError
 
             if !matches {
                 return Err(ApiError {
-                    status: StatusCode::UNAUTHORIZED,
+                    code: StatusCode::UNAUTHORIZED,
                     message: "Invalid password.".to_string(),
                 });
             }
@@ -74,7 +74,7 @@ pub async fn refresh(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<AccessInfo
         }
         Err(_) => {
             return Err(ApiError {
-                status: StatusCode::NOT_FOUND,
+                code: StatusCode::NOT_FOUND,
                 message: "Failed to refresh".to_string(),
             })
         }

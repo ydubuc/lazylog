@@ -1,8 +1,10 @@
-use axum::{Extension, Json};
-use sqlx::PgPool;
+use axum::{extract::State, http::StatusCode, Json};
+use validator::Validate;
 
 use crate::{
-    app::models::api_error::ApiError, devices::dtos::refresh_device_dto::RefreshDeviceDto,
+    app::models::{api_error::ApiError, json_from_request::JsonFromRequest},
+    devices::dtos::refresh_device_dto::RefreshDeviceDto,
+    AppState,
 };
 
 use super::{
@@ -12,30 +14,38 @@ use super::{
 };
 
 pub async fn register(
-    Json(dto): Json<RegisterDto>,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<AppState>,
+    JsonFromRequest(dto): JsonFromRequest<RegisterDto>,
 ) -> Result<Json<AccessInfo>, ApiError> {
-    match service::register(&dto, &pool).await {
-        Ok(user) => return Ok(Json(user)),
-        Err(e) => return Err(e),
-    };
+    match dto.validate() {
+        Ok(_) => match service::register(&dto, &state.pool).await {
+            Ok(user) => return Ok(Json(user)),
+            Err(e) => return Err(e),
+        },
+        Err(e) => {
+            return Err(ApiError {
+                code: StatusCode::BAD_REQUEST,
+                message: e.to_string(),
+            })
+        }
+    }
 }
 
 pub async fn login(
-    Json(dto): Json<LoginDto>,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<AppState>,
+    JsonFromRequest(dto): JsonFromRequest<LoginDto>,
 ) -> Result<Json<AccessInfo>, ApiError> {
-    match service::login(&dto, &pool).await {
+    match service::login(&dto, &state.pool).await {
         Ok(user) => return Ok(Json(user)),
         Err(e) => return Err(e),
     }
 }
 
 pub async fn refresh(
-    Json(dto): Json<RefreshDeviceDto>,
-    Extension(pool): Extension<PgPool>,
+    State(state): State<AppState>,
+    JsonFromRequest(dto): JsonFromRequest<RefreshDeviceDto>,
 ) -> Result<Json<AccessInfo>, ApiError> {
-    match service::refresh(&dto, &pool).await {
+    match service::refresh(&dto, &state.pool).await {
         Ok(access_info) => return Ok(Json(access_info)),
         Err(e) => return Err(e),
     }

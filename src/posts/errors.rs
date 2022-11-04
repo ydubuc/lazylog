@@ -12,11 +12,11 @@ impl PostsApiError {
     pub fn value(&self) -> ApiError {
         match *self {
             Self::PostNotFound => ApiError {
-                status: StatusCode::NOT_FOUND,
+                code: StatusCode::NOT_FOUND,
                 message: "Post not found.".to_string(),
             },
             Self::PostsNotFound => ApiError {
-                status: StatusCode::NOT_FOUND,
+                code: StatusCode::NOT_FOUND,
                 message: "Posts not found".to_string(),
             },
         }

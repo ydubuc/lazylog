@@ -11,7 +11,7 @@ impl UsersApiError {
     pub fn value(&self) -> ApiError {
         match *self {
             Self::UserNotFound => ApiError {
-                status: StatusCode::NOT_FOUND,
+                code: StatusCode::NOT_FOUND,
                 message: "User not found.".to_string(),
             },
         }

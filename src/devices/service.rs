@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::{
     app::{
         errors::DefaultApiError,
-        models::{api_error::ApiError, sql_state_codes::SqlStateCodes},
-        util::sqlx::get_code_from_db_err,
+        models::api_error::ApiError,
+        util::sqlx::{get_code_from_db_err, SqlStateCodes},
     },
     users::models::user::User,
 };
@@ -63,9 +63,9 @@ pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiErro
             };
 
             match code.as_str() {
-                SqlStateCodes::UniqueViolation => {
+                SqlStateCodes::UNIQUE_VIOLATION => {
                     return Err(ApiError {
-                        status: StatusCode::CONFLICT,
+                        code: StatusCode::CONFLICT,
                         message: "Device already exists.".to_string(),
                     })
                 }
@@ -104,7 +104,7 @@ pub async fn refresh_device(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<(),
                 return Ok(());
             } else {
                 return Err(ApiError {
-                    status: StatusCode::NOT_FOUND,
+                    code: StatusCode::NOT_FOUND,
                     message: "Failed to refresh.".to_string(),
                 });
             }
