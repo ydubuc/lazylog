@@ -1,8 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::{
     app::{
@@ -25,37 +22,23 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
         return Err(ApiError {
             code: StatusCode::INTERNAL_SERVER_ERROR,
             message: "Failed to hash password.".to_string()
-        })
+        });
     };
 
-    let user = User {
-        id: Uuid::new_v4().to_string(),
-        username: dto.username.to_string(),
-        username_key: dto.username.to_lowercase(),
-        email: dto.email.to_string(),
-        email_key: dto.email.to_lowercase(),
-        password_hash: hash,
-        updated_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        created_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
+    let user = User::new(dto, hash);
 
     let sqlx_result = sqlx::query(
         "
         INSERT INTO users (
-            id, username, username_key, email, email_key, password_hash, updated_at, created_at
+            id, username, username_key, displayname, email, email_key, password_hash, updated_at, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ",
     )
     .bind(&user.id)
     .bind(&user.username)
     .bind(&user.username_key)
+    .bind(&user.displayname)
     .bind(&user.email)
     .bind(&user.email_key)
     .bind(&user.password_hash)
@@ -80,13 +63,11 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
             };
 
             match code.as_str() {
-                SqlStateCodes::UNIQUE_VIOLATION => {
-                    return Err(ApiError {
-                        code: StatusCode::CONFLICT,
-                        message: "User already exists.".to_string(),
-                    })
-                }
-                _ => return Err(DefaultApiError::InternalServerError.value()),
+                SqlStateCodes::UNIQUE_VIOLATION => Err(ApiError {
+                    code: StatusCode::CONFLICT,
+                    message: "User already exists.".to_string(),
+                }),
+                _ => Err(DefaultApiError::InternalServerError.value()),
             }
         }
     }
@@ -96,7 +77,7 @@ pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<Use
     let Ok(sql) = dto.to_sql() else {
         return Err(ApiError {
             code: StatusCode::INTERNAL_SERVER_ERROR,
-            message: "Failed to parse query".to_string()
+            message: "Failed to parse query.".to_string()
         });
     };
 
@@ -116,8 +97,8 @@ pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<Use
     }
 
     match sqlx_result {
-        Ok(users) => return Ok(users),
-        Err(_) => return Err(DefaultApiError::InternalServerError.value()),
+        Ok(users) => Ok(users),
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }
 }
 
@@ -137,10 +118,10 @@ pub async fn get_user_by_id(id: &str, pool: &PgPool) -> Result<User, ApiError> {
 
     match sqlx_result {
         Ok(user) => match user {
-            Some(user) => return Ok(user),
-            None => return Err(UsersApiError::UserNotFound.value()),
+            Some(user) => Ok(user),
+            None => Err(UsersApiError::UserNotFound.value()),
         },
-        Err(_) => return Err(UsersApiError::UserNotFound.value()),
+        Err(_) => Err(UsersApiError::UserNotFound.value()),
     }
 }
 
@@ -152,10 +133,10 @@ pub async fn get_user_by_login_dto(login_dto: &LoginDto, pool: &PgPool) -> Resul
         return get_user_by_email(email, pool).await;
     }
 
-    return Err(ApiError {
+    Err(ApiError {
         code: StatusCode::BAD_REQUEST,
         message: "Missing credentials.".to_string(),
-    });
+    })
 }
 
 pub async fn get_user_by_username(username: &str, pool: &PgPool) -> Result<User, ApiError> {
@@ -175,10 +156,10 @@ pub async fn get_user_by_username(username: &str, pool: &PgPool) -> Result<User,
 
     match sqlx_result {
         Ok(user) => match user {
-            Some(user) => return Ok(user),
-            None => return Err(UsersApiError::UserNotFound.value()),
+            Some(user) => Ok(user),
+            None => Err(UsersApiError::UserNotFound.value()),
         },
-        Err(_) => return Err(UsersApiError::UserNotFound.value()),
+        Err(_) => Err(UsersApiError::UserNotFound.value()),
     }
 }
 
@@ -199,9 +180,9 @@ pub async fn get_user_by_email(email: &str, pool: &PgPool) -> Result<User, ApiEr
 
     match sqlx_result {
         Ok(user) => match user {
-            Some(user) => return Ok(user),
-            None => return Err(UsersApiError::UserNotFound.value()),
+            Some(user) => Ok(user),
+            None => Err(UsersApiError::UserNotFound.value()),
         },
-        Err(_) => return Err(UsersApiError::UserNotFound.value()),
+        Err(_) => Err(UsersApiError::UserNotFound.value()),
     }
 }

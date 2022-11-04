@@ -19,15 +19,13 @@ pub async fn register(
 ) -> Result<Json<AccessInfo>, ApiError> {
     match dto.validate() {
         Ok(_) => match service::register(&dto, &state.pool).await {
-            Ok(user) => return Ok(Json(user)),
-            Err(e) => return Err(e),
+            Ok(user) => Ok(Json(user)),
+            Err(e) => Err(e),
         },
-        Err(e) => {
-            return Err(ApiError {
-                code: StatusCode::BAD_REQUEST,
-                message: e.to_string(),
-            })
-        }
+        Err(e) => Err(ApiError {
+            code: StatusCode::BAD_REQUEST,
+            message: e.to_string(),
+        }),
     }
 }
 
@@ -36,8 +34,8 @@ pub async fn login(
     JsonFromRequest(dto): JsonFromRequest<LoginDto>,
 ) -> Result<Json<AccessInfo>, ApiError> {
     match service::login(&dto, &state.pool).await {
-        Ok(user) => return Ok(Json(user)),
-        Err(e) => return Err(e),
+        Ok(user) => Ok(Json(user)),
+        Err(e) => Err(e),
     }
 }
 
@@ -46,7 +44,7 @@ pub async fn refresh(
     JsonFromRequest(dto): JsonFromRequest<RefreshDeviceDto>,
 ) -> Result<Json<AccessInfo>, ApiError> {
     match service::refresh(&dto, &state.pool).await {
-        Ok(access_info) => return Ok(Json(access_info)),
-        Err(e) => return Err(e),
+        Ok(access_info) => Ok(Json(access_info)),
+        Err(e) => Err(e),
     }
 }

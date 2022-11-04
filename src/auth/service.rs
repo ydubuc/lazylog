@@ -55,28 +55,20 @@ pub async fn login(dto: &LoginDto, pool: &PgPool) -> Result<AccessInfo, ApiError
                 Err(e) => Err(e),
             }
         }
-        Err(e) => {
-            return Err(e);
-        }
+        Err(e) => Err(e),
     }
 }
 
 pub async fn refresh(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<AccessInfo, ApiError> {
-    let result = devices::service::refresh_device(dto, pool).await;
-
-    match result {
-        Ok(_) => {
-            return Ok(AccessInfo {
-                access_token: sign_jwt(&dto.user_id),
-                refresh_token: None,
-                device_id: None,
-            })
-        }
-        Err(_) => {
-            return Err(ApiError {
-                code: StatusCode::NOT_FOUND,
-                message: "Failed to refresh".to_string(),
-            })
-        }
+    match devices::service::refresh_device(dto, pool).await {
+        Ok(_) => Ok(AccessInfo {
+            access_token: sign_jwt(&dto.user_id),
+            refresh_token: None,
+            device_id: None,
+        }),
+        Err(_) => Err(ApiError {
+            code: StatusCode::NOT_FOUND,
+            message: "Failed to refresh".to_string(),
+        }),
     }
 }

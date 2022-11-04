@@ -17,15 +17,13 @@ pub async fn get_users(
 ) -> Result<Json<Vec<User>>, ApiError> {
     match dto.validate() {
         Ok(_) => match service::get_users(&dto, &state.pool).await {
-            Ok(users) => return Ok(Json(users)),
-            Err(e) => return Err(e),
+            Ok(users) => Ok(Json(users)),
+            Err(e) => Err(e),
         },
-        Err(e) => {
-            return Err(ApiError {
-                code: StatusCode::BAD_REQUEST,
-                message: e.to_string(),
-            })
-        }
+        Err(e) => Err(ApiError {
+            code: StatusCode::BAD_REQUEST,
+            message: e.to_string(),
+        }),
     }
 }
 
@@ -35,8 +33,8 @@ pub async fn get_user_from_request(
 ) -> Result<Json<User>, ApiError> {
     match Claims::from_header(authorization) {
         Ok(claims) => match service::get_user_by_id(&claims.id, &state.pool).await {
-            Ok(user) => return Ok(Json(user)),
-            Err(e) => return Err(e),
+            Ok(user) => Ok(Json(user)),
+            Err(e) => Err(e),
         },
         Err(e) => Err(e),
     }
@@ -48,7 +46,7 @@ pub async fn get_user_by_id(
     TypedHeader(_authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<User>, ApiError> {
     match service::get_user_by_id(&id, &state.pool).await {
-        Ok(user) => return Ok(Json(user)),
-        Err(e) => return Err(e),
+        Ok(user) => Ok(Json(user)),
+        Err(e) => Err(e),
     }
 }

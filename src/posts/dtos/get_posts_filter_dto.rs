@@ -2,22 +2,24 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::{app::models::api_error::ApiError, users::models::user::USER_SORTABLE_FIELDS};
+use crate::{app::models::api_error::ApiError, posts::models::post::POST_SORTABLE_FIELDS};
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct GetUsersFilterDto {
+pub struct GetPostsFilterDto {
     #[validate(length(equal = 36, message = "id must be 36 characters."))]
     pub id: Option<String>,
-    pub username: Option<String>,
+    #[validate(length(equal = 36, message = "user_id must be 36 characters."))]
+    pub user_id: Option<String>,
+    pub search: Option<String>,
     pub sort: Option<String>,
     pub cursor: Option<String>,
     #[validate(range(max = 100, message = "limit must less than 100."))]
     pub limit: Option<u8>,
 }
 
-impl GetUsersFilterDto {
+impl GetPostsFilterDto {
     pub fn to_sql(&self) -> Result<String, ApiError> {
-        let mut sql = "SELECT * FROM users".to_string();
+        let mut sql = "SELECT * FROM posts".to_string();
         let mut clauses = Vec::new();
 
         let mut sort_field = "created_at".to_string();
@@ -31,9 +33,13 @@ impl GetUsersFilterDto {
             clauses.push(["id = $", &index.to_string()].concat());
             index += 1;
         }
-        if self.username.is_some() {
-            clauses.push(["username_key LIKE $", &index.to_string()].concat());
-            // index += 1;
+        if self.user_id.is_some() {
+            clauses.push(["user_id = $", &index.to_string()].concat());
+            index += 1;
+        }
+        if self.search.is_some() {
+            clauses.push(["title LIKE $", &index.to_string()].concat());
+            index += 1;
         }
 
         // SORT
@@ -46,7 +52,7 @@ impl GetUsersFilterDto {
                     message: "Malformed sort query.".to_string(),
                 });
             }
-            if !USER_SORTABLE_FIELDS.contains(&sort_params[0]) {
+            if !POST_SORTABLE_FIELDS.contains(&sort_params[0]) {
                 return Err(ApiError {
                     code: StatusCode::BAD_REQUEST,
                     message: "Invalid sort field.".to_string(),

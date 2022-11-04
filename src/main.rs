@@ -1,10 +1,11 @@
+use std::net::SocketAddr;
+
 use axum::{
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -54,6 +55,9 @@ async fn main() {
         .route("/users/me", get(users::controller::get_user_from_request))
         .route("/users/:id", get(users::controller::get_user_by_id))
         .route("/posts", post(posts::controller::create_post))
+        .route("/posts", get(posts::controller::get_posts))
+        .route("/posts/:id", get(posts::controller::get_post_by_id))
+        .route("/posts/:id", patch(posts::controller::edit_post_by_id))
         .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

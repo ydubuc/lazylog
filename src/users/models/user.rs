@@ -1,13 +1,20 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
+
+use crate::auth::dtos::register_dto::RegisterDto;
 
 pub static USER_SORTABLE_FIELDS: [&str; 2] = ["created_at", "updated_at"];
 
-#[derive(Serialize, Deserialize, sqlx::FromRow, Debug)]
+#[derive(Serialize, Deserialize, FromRow, Debug)]
 pub struct User {
     pub id: String,
     pub username: String,
     #[serde(skip_serializing)]
     pub username_key: String,
+    pub displayname: String,
     #[serde(skip_serializing)]
     pub email: String,
     #[serde(skip_serializing)]
@@ -18,4 +25,26 @@ pub struct User {
     pub updated_at: u64,
     #[sqlx(try_from = "i64")]
     pub created_at: u64,
+}
+
+impl User {
+    pub fn new(dto: &RegisterDto, hash: String) -> Self {
+        return Self {
+            id: Uuid::new_v4().to_string(),
+            username: dto.username.to_string(),
+            username_key: dto.username.to_lowercase(),
+            displayname: dto.username.to_string(),
+            email: dto.email.to_string(),
+            email_key: dto.email.to_lowercase(),
+            password_hash: hash,
+            updated_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            created_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        };
+    }
 }
