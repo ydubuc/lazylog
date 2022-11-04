@@ -24,7 +24,7 @@ pub async fn create_post(
     dto: &CreatePostDto,
     pool: &PgPool,
 ) -> Result<Post, ApiError> {
-    let post = Post::new(claims, dto);
+    let post = Post::new(claims, dto, &None);
 
     let sqlx_result = sqlx::query(
         "

@@ -10,6 +10,6 @@ pub struct CreateMediaDto {
     ))]
     pub prompt: String,
     #[validate(range(min = 1, max = 4, message = "number must be between 1 and 4."))]
-    pub number: Option<u8>,
-    pub size: Option<String>,
+    pub number: u8,
+    pub size: String,
 }

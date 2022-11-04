@@ -43,28 +43,34 @@ pub async fn create_post(
 
 pub async fn get_posts(
     State(state): State<AppState>,
-    TypedHeader(_authorization): TypedHeader<Authorization<Bearer>>,
+    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
     Query(dto): Query<GetPostsFilterDto>,
 ) -> Result<Json<Vec<Post>>, ApiError> {
-    match dto.validate() {
-        Ok(_) => match service::get_posts(&dto, &state.pool).await {
-            Ok(posts) => Ok(Json(posts)),
-            Err(e) => Err(e),
+    match Claims::from_header(authorization) {
+        Ok(_) => match dto.validate() {
+            Ok(_) => match service::get_posts(&dto, &state.pool).await {
+                Ok(posts) => Ok(Json(posts)),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(ApiError {
+                code: StatusCode::BAD_REQUEST,
+                message: e.to_string(),
+            }),
         },
-        Err(e) => Err(ApiError {
-            code: StatusCode::BAD_REQUEST,
-            message: e.to_string(),
-        }),
+        Err(e) => Err(e),
     }
 }
 
 pub async fn get_post_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    TypedHeader(_authorization): TypedHeader<Authorization<Bearer>>,
+    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<Post>, ApiError> {
-    match service::get_post_by_id(&id, &state.pool).await {
-        Ok(post) => Ok(Json(post)),
+    match Claims::from_header(authorization) {
+        Ok(_) => match service::get_post_by_id(&id, &state.pool).await {
+            Ok(post) => Ok(Json(post)),
+            Err(e) => Err(e),
+        },
         Err(e) => Err(e),
     }
 }

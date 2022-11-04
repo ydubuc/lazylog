@@ -23,6 +23,11 @@ CREATE TABLE posts(
     user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     content TEXT,
+    media_url TEXT,
+    media_width: SMALLINT,
+    media_height: SMALLINT,
+    media_mime_type: VARCHAR(255),
+    media_source: VARCHAR(255),
     updated_at BIGINT NOT NULL,
     created_at BIGINT NOT NULL
 );
@@ -34,5 +39,6 @@ CREATE TABLE media(
     width SMALLINT NOT NULL,
     height SMALLINT NOT NULL,
     mime_type VARCHAR(255) NOT NULL,
+    source VARCHAR(255) NOT NULL,
     created_at BIGINT NOT NULL
 );

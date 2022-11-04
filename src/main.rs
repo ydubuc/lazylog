@@ -9,6 +9,8 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::app::env::Env;
+
 mod app;
 mod auth;
 mod devices;
@@ -25,11 +27,11 @@ pub struct AppState {
 async fn main() {
     // environment
     dotenv().ok();
-    let port: u16 = match std::env::var("PORT") {
+    let port: u16 = match std::env::var(Env::PORT) {
         Ok(port) => port.parse().expect("environment: PORT is not a number"),
         Err(_) => 3000,
     };
-    let db_url = std::env::var("DATABASE_URL").expect("environment: DATABASE_URL missing");
+    let db_url = std::env::var(Env::DATABASE_URL).expect("environment: DATABASE_URL missing");
 
     // debug
     tracing_subscriber::registry()
@@ -72,6 +74,9 @@ async fn main() {
         .route("/posts/:id", delete(posts::controller::delete_post_by_id))
         // media
         .route("/media", post(media::controller::create_media))
+        .route("/media", get(media::controller::get_media))
+        .route("/media/:id", get(media::controller::get_media_by_id))
+        .route("/media/:id", delete(media::controller::delete_media_by_id))
         .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

@@ -21,7 +21,7 @@ pub struct GetMediaFilterDto {
 
 impl GetMediaFilterDto {
     pub fn to_sql(&self) -> Result<String, ApiError> {
-        let mut sql = "SELECT * FROM posts".to_string();
+        let mut sql = "SELECT * FROM media".to_string();
         let mut clauses = Vec::new();
 
         let mut sort_field = "created_at".to_string();

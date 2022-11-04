@@ -1,10 +1,8 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::users::models::user::User;
+use crate::{app::util::time, users::models::user::User};
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Device {
@@ -20,18 +18,14 @@ pub struct Device {
 
 impl Device {
     pub fn new(user: &User) -> Self {
+        let current_time = time::current_time_in_secs();
+
         return Self {
             id: Uuid::new_v4().to_string(),
             user_id: user.id.to_string(),
             refresh_token: Uuid::new_v4().to_string(),
-            updated_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-            created_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            updated_at: current_time,
+            created_at: current_time,
         };
     }
 }

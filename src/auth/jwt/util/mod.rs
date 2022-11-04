@@ -7,7 +7,7 @@ use jsonwebtoken::{
     decode, encode, errors::ErrorKind, Algorithm, DecodingKey, EncodingKey, Header, Validation,
 };
 
-use crate::auth::jwt::models::claims::Claims;
+use crate::{app::env::Env, auth::jwt::models::claims::Claims};
 
 use super::config::JWT_EXP;
 
@@ -25,7 +25,7 @@ pub fn sign_jwt(uid: &str) -> String {
         iat,
         exp,
     };
-    let secret = env::var("JWT_SECRET").expect("secret");
+    let secret = env::var(Env::JWT_SECRET).expect("environment: JWT_SECRET missing");
     let jwt = encode(
         &Header::default(),
         &claims,
@@ -37,7 +37,7 @@ pub fn sign_jwt(uid: &str) -> String {
 }
 
 pub fn decode_jwt(jwt: String) -> Result<Claims, ErrorKind> {
-    let secret = env::var("JWT_SECRET").expect("secret");
+    let secret = env::var(Env::JWT_SECRET).expect("environment: JWT_SECRET missing");
     let result = decode::<Claims>(
         &jwt,
         &DecodingKey::from_secret(&secret.as_ref()),
