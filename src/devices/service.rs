@@ -2,7 +2,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::{
     app::{
@@ -16,27 +15,14 @@ use crate::{
 use super::{dtos::refresh_device_dto::RefreshDeviceDto, models::device::Device};
 
 pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiError> {
-    let device = Device {
-        id: Uuid::new_v4().to_string(),
-        user_id: user.id.to_string(),
-        refresh_token: Uuid::new_v4().to_string(),
-        updated_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        created_at: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
+    let device = Device::new(user);
 
-    let sqlx_result = sqlx::query_as::<_, Device>(
+    let sqlx_result = sqlx::query(
         "
         INSERT INTO devices (
             id, user_id, refresh_token, updated_at, created_at
         )
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING *
         ",
     )
     .bind(&device.id)
@@ -44,7 +30,7 @@ pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiErro
     .bind(&device.refresh_token)
     .bind(device.updated_at.to_owned() as i64)
     .bind(device.created_at.to_owned() as i64)
-    .fetch_one(pool)
+    .execute(pool)
     .await;
 
     if let Some(error) = sqlx_result.as_ref().err() {
@@ -63,13 +49,11 @@ pub async fn create_device(user: &User, pool: &PgPool) -> Result<Device, ApiErro
             };
 
             match code.as_str() {
-                SqlStateCodes::UNIQUE_VIOLATION => {
-                    return Err(ApiError {
-                        code: StatusCode::CONFLICT,
-                        message: "Device already exists.".to_string(),
-                    })
-                }
-                _ => return Err(DefaultApiError::InternalServerError.value()),
+                SqlStateCodes::UNIQUE_VIOLATION => Err(ApiError {
+                    code: StatusCode::CONFLICT,
+                    message: "Device already exists.".to_string(),
+                }),
+                _ => Err(DefaultApiError::InternalServerError.value()),
             }
         }
     }
@@ -99,16 +83,13 @@ pub async fn refresh_device(dto: &RefreshDeviceDto, pool: &PgPool) -> Result<(),
     }
 
     match sqlx_result {
-        Ok(result) => {
-            if result.rows_affected() > 0 {
-                return Ok(());
-            } else {
-                return Err(ApiError {
-                    code: StatusCode::NOT_FOUND,
-                    message: "Failed to refresh.".to_string(),
-                });
-            }
-        }
-        Err(_) => return Err(DefaultApiError::InternalServerError.value()),
+        Ok(result) => match result.rows_affected() > 0 {
+            true => Ok(()),
+            false => Err(ApiError {
+                code: StatusCode::NOT_FOUND,
+                message: "Failed to refresh.".to_string(),
+            }),
+        },
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }
 }

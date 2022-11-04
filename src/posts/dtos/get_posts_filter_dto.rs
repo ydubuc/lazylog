@@ -10,6 +10,11 @@ pub struct GetPostsFilterDto {
     pub id: Option<String>,
     #[validate(length(equal = 36, message = "user_id must be 36 characters."))]
     pub user_id: Option<String>,
+    #[validate(length(
+        min = 1,
+        max = 255,
+        message = "search must be between 4 and 255 characters."
+    ))]
     pub search: Option<String>,
     pub sort: Option<String>,
     pub cursor: Option<String>,

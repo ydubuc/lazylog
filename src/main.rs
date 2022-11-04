@@ -24,6 +24,10 @@ pub struct AppState {
 async fn main() {
     // environment
     dotenv().ok();
+    let port: u16 = match std::env::var("PORT") {
+        Ok(port) => port.parse().expect("environment: PORT is not a number"),
+        Err(_) => 3000,
+    };
     let db_url = std::env::var("DATABASE_URL").expect("environment: DATABASE_URL missing");
 
     // debug
@@ -54,6 +58,7 @@ async fn main() {
         .route("/users", get(users::controller::get_users))
         .route("/users/me", get(users::controller::get_user_from_request))
         .route("/users/:id", get(users::controller::get_user_by_id))
+        .route("/users/:id", patch(users::controller::edit_user_by_id))
         .route("/posts", post(posts::controller::create_post))
         .route("/posts", get(posts::controller::get_posts))
         .route("/posts/:id", get(posts::controller::get_post_by_id))
@@ -61,7 +66,7 @@ async fn main() {
         .route("/posts/:id", delete(posts::controller::delete_post_by_id))
         .layer(cors);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
     tracing::debug!("listening on {}", addr);
 
     axum::Server::bind(&addr)

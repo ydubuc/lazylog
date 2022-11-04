@@ -10,11 +10,16 @@ use crate::{
             sqlx::{get_code_from_db_err, SqlStateCodes},
         },
     },
-    auth::dtos::{login_dto::LoginDto, register_dto::RegisterDto},
+    auth::{
+        dtos::{login_dto::LoginDto, register_dto::RegisterDto},
+        jwt::models::claims::Claims,
+    },
 };
 
 use super::{
-    dtos::get_users_filter_dto::GetUsersFilterDto, errors::UsersApiError, models::user::User,
+    dtos::{edit_user_dto::EditUserDto, get_users_filter_dto::GetUsersFilterDto},
+    errors::UsersApiError,
+    models::user::User,
 };
 
 pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiError> {
@@ -30,7 +35,8 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
     let sqlx_result = sqlx::query(
         "
         INSERT INTO users (
-            id, username, username_key, displayname, email, email_key, password_hash, updated_at, created_at
+            id, username, username_key, displayname,
+            email, email_key, password_hash, updated_at, created_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ",
@@ -74,11 +80,9 @@ pub async fn create_user(dto: &RegisterDto, pool: &PgPool) -> Result<User, ApiEr
 }
 
 pub async fn get_users(dto: &GetUsersFilterDto, pool: &PgPool) -> Result<Vec<User>, ApiError> {
-    let Ok(sql) = dto.to_sql() else {
-        return Err(ApiError {
-            code: StatusCode::INTERNAL_SERVER_ERROR,
-            message: "Failed to parse query.".to_string()
-        });
+    let sql_result = dto.to_sql();
+    let Ok(sql) = sql_result else {
+        return Err(sql_result.err().unwrap());
     };
 
     let mut sqlx = sqlx::query_as::<_, User>(&sql);
@@ -184,5 +188,45 @@ pub async fn get_user_by_email(email: &str, pool: &PgPool) -> Result<User, ApiEr
             None => Err(UsersApiError::UserNotFound.value()),
         },
         Err(_) => Err(UsersApiError::UserNotFound.value()),
+    }
+}
+
+pub async fn edit_user_by_id(
+    claims: &Claims,
+    id: &str,
+    dto: &EditUserDto,
+    pool: &PgPool,
+) -> Result<User, ApiError> {
+    if claims.id != id {
+        return Err(ApiError {
+            code: StatusCode::UNAUTHORIZED,
+            message: "Permission denied.".to_string(),
+        });
+    }
+
+    let sql_result = dto.to_sql();
+    let Ok(sql) = sql_result else {
+        return Err(sql_result.err().unwrap());
+    };
+
+    let mut sqlx = sqlx::query_as::<_, User>(&sql);
+
+    if let Some(displayname) = &dto.displayname {
+        sqlx = sqlx.bind(displayname);
+    }
+    sqlx = sqlx.bind(id);
+
+    let sqlx_result = sqlx.fetch_optional(pool).await;
+
+    if let Some(error) = sqlx_result.as_ref().err() {
+        println!("{}", error);
+    }
+
+    match sqlx_result {
+        Ok(user) => match user {
+            Some(user) => Ok(user),
+            None => Err(UsersApiError::UserNotFound.value()),
+        },
+        Err(_) => Err(DefaultApiError::InternalServerError.value()),
     }
 }

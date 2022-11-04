@@ -8,7 +8,7 @@ pub struct AppError {
 }
 
 impl AppError {
-    fn as_api_error(self) -> ApiError {
+    fn to_api_error(self) -> ApiError {
         ApiError {
             code: StatusCode::INTERNAL_SERVER_ERROR,
             message: self.message,

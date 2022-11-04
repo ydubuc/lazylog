@@ -1,13 +1,14 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::{auth::jwt::models::claims::Claims, posts::dtos::create_post_dto::CreatePostDto};
 
 pub static POST_SORTABLE_FIELDS: [&str; 2] = ["created_at", "updated_at"];
 
-#[derive(Serialize, Deserialize, sqlx::FromRow, Debug)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Post {
     pub id: String,
     pub user_id: String,

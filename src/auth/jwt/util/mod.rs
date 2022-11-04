@@ -11,6 +11,8 @@ use crate::auth::jwt::models::claims::Claims;
 
 use super::config::JWT_EXP;
 
+// FIXME: unsafe unwraps
+
 pub fn sign_jwt(uid: &str) -> String {
     let iat = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -31,7 +33,7 @@ pub fn sign_jwt(uid: &str) -> String {
     )
     .unwrap();
 
-    return jwt;
+    jwt
 }
 
 pub fn decode_jwt(jwt: String) -> Result<Claims, ErrorKind> {
@@ -43,7 +45,7 @@ pub fn decode_jwt(jwt: String) -> Result<Claims, ErrorKind> {
     );
 
     match result {
-        Ok(data) => return Ok(data.claims),
-        Err(e) => return Err(e.kind().to_owned()),
+        Ok(data) => Ok(data.claims),
+        Err(e) => Err(e.kind().to_owned()),
     }
 }

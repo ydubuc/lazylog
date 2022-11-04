@@ -3,16 +3,16 @@ use axum::http::StatusCode;
 use crate::app::models::api_error::ApiError;
 
 #[derive(Debug)]
-pub enum PostsApiError {
-    PostNotFound,
+pub enum DevicesApiError {
+    DeviceNotFound,
 }
 
-impl PostsApiError {
+impl DevicesApiError {
     pub fn value(&self) -> ApiError {
         match *self {
-            Self::PostNotFound => ApiError {
+            Self::DeviceNotFound => ApiError {
                 code: StatusCode::NOT_FOUND,
-                message: "Post not found.".to_string(),
+                message: "Device not found.".to_string(),
             },
         }
     }

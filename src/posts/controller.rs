@@ -27,9 +27,15 @@ pub async fn create_post(
     JsonFromRequest(dto): JsonFromRequest<CreatePostDto>,
 ) -> Result<Json<Post>, ApiError> {
     match Claims::from_header(authorization) {
-        Ok(claims) => match service::create_post(&claims, &dto, &state.pool).await {
-            Ok(post) => Ok(Json(post)),
-            Err(e) => Err(e),
+        Ok(claims) => match dto.validate() {
+            Ok(_) => match service::create_post(&claims, &dto, &state.pool).await {
+                Ok(post) => Ok(Json(post)),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(ApiError {
+                code: StatusCode::BAD_REQUEST,
+                message: e.to_string(),
+            }),
         },
         Err(e) => Err(e),
     }
@@ -70,9 +76,15 @@ pub async fn edit_post_by_id(
     JsonFromRequest(dto): JsonFromRequest<EditPostDto>,
 ) -> Result<Json<Post>, ApiError> {
     match Claims::from_header(authorization) {
-        Ok(claims) => match service::edit_post_by_id(&claims, &id, &dto, &state.pool).await {
-            Ok(post) => Ok(Json(post)),
-            Err(e) => Err(e),
+        Ok(claims) => match dto.validate() {
+            Ok(_) => match service::edit_post_by_id(&claims, &id, &dto, &state.pool).await {
+                Ok(post) => Ok(Json(post)),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(ApiError {
+                code: StatusCode::BAD_REQUEST,
+                message: e.to_string(),
+            }),
         },
         Err(e) => Err(e),
     }

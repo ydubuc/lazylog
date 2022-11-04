@@ -8,7 +8,7 @@ use crate::auth::dtos::register_dto::RegisterDto;
 
 pub static USER_SORTABLE_FIELDS: [&str; 2] = ["created_at", "updated_at"];
 
-#[derive(Serialize, Deserialize, FromRow, Debug)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct User {
     pub id: String,
     pub username: String,

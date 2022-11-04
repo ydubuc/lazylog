@@ -5,35 +5,25 @@ use validator::Validate;
 use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims};
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct EditPostDto {
+pub struct EditUserDto {
     #[validate(length(
-        min = 1,
-        max = 255,
-        message = "title must be between 1 and 255 characters."
+        min = 3,
+        max = 24,
+        message = "displayname must be between 3 and 24 characters."
     ))]
-    pub title: Option<String>,
-    #[validate(length(
-        min = 1,
-        max = 65535,
-        message = "content must be between 1 and 65535 characters."
-    ))]
-    pub content: Option<String>,
+    pub displayname: Option<String>,
 }
 
-impl EditPostDto {
-    pub fn to_sql(&self, claims: &Claims) -> Result<String, ApiError> {
-        let mut sql = "UPDATE posts SET ".to_string();
+impl EditUserDto {
+    pub fn to_sql(&self) -> Result<String, ApiError> {
+        let mut sql = "UPDATE users SET ".to_string();
         let mut clauses = Vec::new();
 
         let mut index: u8 = 1;
 
         // SET CLAUSES
-        if self.title.is_some() {
-            clauses.push(["title = $", &index.to_string()].concat());
-            index += 1;
-        }
-        if self.content.is_some() {
-            clauses.push(["content = $", &index.to_string()].concat());
+        if self.displayname.is_some() {
+            clauses.push(["displayname = $", &index.to_string()].concat());
             index += 1;
         }
 
@@ -54,7 +44,6 @@ impl EditPostDto {
         }
 
         sql.push_str(&[" WHERE id = $", &index.to_string()].concat());
-        sql.push_str(&[" AND user_id = '", &claims.id, "'"].concat());
         sql.push_str(" RETURNING *");
 
         println!("{}", sql);

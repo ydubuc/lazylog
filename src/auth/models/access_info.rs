@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize)]
 pub struct AccessInfo {
     pub access_token: String,
     #[serde(skip_serializing_if = "Option::is_none")]

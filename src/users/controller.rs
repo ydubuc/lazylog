@@ -6,9 +6,17 @@ use axum::{
 };
 use validator::Validate;
 
-use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims, AppState};
+use crate::{
+    app::models::{api_error::ApiError, json_from_request::JsonFromRequest},
+    auth::jwt::models::claims::Claims,
+    AppState,
+};
 
-use super::{dtos::get_users_filter_dto::GetUsersFilterDto, models::user::User, service};
+use super::{
+    dtos::{edit_user_dto::EditUserDto, get_users_filter_dto::GetUsersFilterDto},
+    models::user::User,
+    service,
+};
 
 pub async fn get_users(
     State(state): State<AppState>,
@@ -47,6 +55,27 @@ pub async fn get_user_by_id(
 ) -> Result<Json<User>, ApiError> {
     match service::get_user_by_id(&id, &state.pool).await {
         Ok(user) => Ok(Json(user)),
+        Err(e) => Err(e),
+    }
+}
+
+pub async fn edit_user_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    TypedHeader(authorization): TypedHeader<Authorization<Bearer>>,
+    JsonFromRequest(dto): JsonFromRequest<EditUserDto>,
+) -> Result<Json<User>, ApiError> {
+    match Claims::from_header(authorization) {
+        Ok(claims) => match dto.validate() {
+            Ok(_) => match service::edit_user_by_id(&claims, &id, &dto, &state.pool).await {
+                Ok(user) => Ok(Json(user)),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(ApiError {
+                code: StatusCode::BAD_REQUEST,
+                message: e.to_string(),
+            }),
+        },
         Err(e) => Err(e),
     }
 }

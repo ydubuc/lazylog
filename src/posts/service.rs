@@ -70,11 +70,9 @@ pub async fn create_post(
 }
 
 pub async fn get_posts(dto: &GetPostsFilterDto, pool: &PgPool) -> Result<Vec<Post>, ApiError> {
-    let Ok(sql) = dto.to_sql() else {
-        return Err(ApiError {
-            code: StatusCode::INTERNAL_SERVER_ERROR,
-            message: "Failed to parse query.".to_string()
-        });
+    let sql_result = dto.to_sql();
+    let Ok(sql) = sql_result else {
+        return Err(sql_result.err().unwrap());
     };
 
     let mut sqlx = sqlx::query_as::<_, Post>(&sql);
@@ -130,11 +128,9 @@ pub async fn edit_post_by_id(
     dto: &EditPostDto,
     pool: &PgPool,
 ) -> Result<Post, ApiError> {
-    let Ok(sql) = dto.to_sql(claims) else {
-        return Err(ApiError {
-            code: StatusCode::INTERNAL_SERVER_ERROR,
-            message: "Failed to parse query.".to_string()
-        });
+    let sql_result = dto.to_sql(claims);
+    let Ok(sql) = sql_result else {
+        return Err(sql_result.err().unwrap());
     };
 
     let mut sqlx = sqlx::query_as::<_, Post>(&sql);
