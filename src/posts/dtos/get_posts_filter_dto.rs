@@ -31,20 +31,20 @@ impl GetPostsFilterDto {
         let mut sort_order = "DESC".to_string();
         let mut page_limit: u8 = 50;
 
-        let mut index: u8 = 1;
+        let mut index: u8 = 0;
 
         // WHERE CLAUSES
         if self.id.is_some() {
-            clauses.push(["id = $", &index.to_string()].concat());
             index += 1;
+            clauses.push(["id = $", &index.to_string()].concat());
         }
         if self.user_id.is_some() {
-            clauses.push(["user_id = $", &index.to_string()].concat());
             index += 1;
+            clauses.push(["user_id = $", &index.to_string()].concat());
         }
         if self.search.is_some() {
-            clauses.push(["title LIKE $", &index.to_string()].concat());
             index += 1;
+            clauses.push(["title LIKE $", &index.to_string()].concat());
         }
 
         // SORT

@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::{app::models::api_error::ApiError, auth::jwt::models::claims::Claims};
+use crate::app::models::api_error::ApiError;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct EditUserDto {

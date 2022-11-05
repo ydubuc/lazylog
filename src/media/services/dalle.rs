@@ -4,7 +4,7 @@ use serde_json::json;
 extern crate reqwest;
 
 use crate::{
-    app::models::api_error::ApiError,
+    app::{env::Env, models::api_error::ApiError},
     auth::jwt::models::claims::Claims,
     media::{dtos::create_media_dto::CreateMediaDto, models::media::Media},
 };
@@ -32,7 +32,8 @@ pub async fn create_media(claims: &Claims, dto: &CreateMediaDto) -> Result<Vec<M
 }
 
 async fn dalle_generate_image(dto: &CreateMediaDto) -> Result<DalleResponse, ApiError> {
-    let openai_api_key = std::env::var("OPENAI_API_KEY").unwrap();
+    let openai_api_key =
+        std::env::var(Env::OPENAI_API_KEY).expect("environment: OPENAPI_API_KEY missing");
 
     let mut headers = header::HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
@@ -60,7 +61,7 @@ async fn dalle_generate_image(dto: &CreateMediaDto) -> Result<DalleResponse, Api
         Ok(res) => match res.text().await {
             Ok(text) => match serde_json::from_str(&text) {
                 Ok(dalle_response) => Ok(dalle_response),
-                Err(e) => Err(ApiError {
+                Err(_) => Err(ApiError {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
                     message: "Failed to deserialize response.".to_string(),
                 }),
